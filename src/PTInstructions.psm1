@@ -162,7 +162,7 @@ function Publish-PTSkillsDocument {
     $safePath = $ItemPath.TrimStart('/')
     $uri = "/v1.0/drives/$DriveId/root:/${safePath}:/content"
     if ($PSCmdlet.ShouldProcess("$DriveId :/$ItemPath", 'Publish skills document to SharePoint')) {
-        $item = Invoke-PTGraphRequest -Method PUT -Uri $uri -Body $Content
+        $item = Invoke-PTGraphRequest -Method PUT -Uri $uri -Body $Content -ContentType 'text/markdown'
         Write-PTStatus -Level OK -Message "Skills document published to SharePoint '$ItemPath'."
         return [pscustomobject]@{ Published = $true; WebUrl = (Get-PTProperty $item 'webUrl') }
     }
@@ -170,5 +170,51 @@ function Publish-PTSkillsDocument {
     return [pscustomobject]@{ Published = $false; WebUrl = $null }
 }
 
+function Get-PTDesktopPath {
+    <#
+        Returns the operator's Desktop directory for the runbook copy. Uses the OS Desktop
+        path (handles OneDrive-redirected desktops on Windows) and falls back to ~/Desktop when
+        the OS does not report one (Linux/WSL/macOS).
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param()
+    $desktop = [Environment]::GetFolderPath('Desktop')
+    if ([string]::IsNullOrWhiteSpace($desktop)) { $desktop = Join-Path $HOME 'Desktop' }
+    return $desktop
+}
+
+function Publish-PTOneDriveCopy {
+    <#
+        Uploads the resolved runbook content to the signed-in user's OneDrive
+        (PUT /me/drive/root:/{ItemPath}:/content) and returns the web link. Requires a Graph
+        connection with Files.ReadWrite. Reports Uploaded=$false (rather than throwing) when the
+        account has no OneDrive provisioned. Honours -WhatIf.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string]$Content,
+        [Parameter(Mandatory)][string]$ItemPath
+    )
+    $safePath = $ItemPath.TrimStart('/')
+    $uri = "/v1.0/me/drive/root:/${safePath}:/content"
+    if (-not $PSCmdlet.ShouldProcess('OneDrive', "Upload runbook to $safePath")) {
+        Write-PTStatus -Level DRYRUN -Message "Would upload runbook copy to OneDrive '$safePath'."
+        return [pscustomobject]@{ Uploaded = $false; WebUrl = $null }
+    }
+    try {
+        $item = Invoke-PTGraphRequest -Method PUT -Uri $uri -Body $Content -ContentType 'text/markdown'
+        $webUrl = [string](Get-PTProperty $item 'webUrl')
+        Write-PTStatus -Level OK -Message 'Runbook copy uploaded to OneDrive.'
+        return [pscustomobject]@{ Uploaded = $true; WebUrl = $webUrl }
+    }
+    catch {
+        Write-PTStatus -Level WARN -Message "OneDrive upload skipped (no OneDrive for this account?): $($_.Exception.Message)"
+        return [pscustomobject]@{ Uploaded = $false; WebUrl = $null }
+    }
+}
+
 Export-ModuleMember -Function Get-PTDefaultSkillsPath, ConvertTo-PTLocalPath, Get-PTSkillsContent,
-    Resolve-PTSkillsDocument, Save-PTSkillsDocument, Publish-PTSkillsDocument
+    Resolve-PTSkillsDocument, Save-PTSkillsDocument, Publish-PTSkillsDocument,
+    Get-PTDesktopPath, Publish-PTOneDriveCopy

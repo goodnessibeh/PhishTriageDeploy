@@ -75,7 +75,10 @@ Exit codes: `0` success (manual handoff remains) · `10` wrong tenant · `11` no
 `skills/default-phishing-triage-skills.md` is a managed runbook covering whitelists,
 custom instructions, analyst insights, evidence-backed verdicts, business-logic /
 false-positive reduction, alert search & closure, and Microsoft Threat Intel checks.
-Point the tool at your own copy and `Append` or `Replace`.
+Point the tool at your own copy and `Append` or `Replace`. At handoff the resolved runbook
+is saved to your **Desktop** (path shown) and uploaded to your **OneDrive** (link shown),
+so you can copy its content straight into the portal. Both copies are produced even in a
+dry-run, since they are personal artifacts, not tenant changes.
 
 > Note: the first-party agent has **no instructions/knowledge API** — it is tuned only by
 > portal-typed analyst feedback. This document is therefore a source-of-truth runbook the

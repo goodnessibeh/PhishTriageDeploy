@@ -44,6 +44,19 @@ Describe 'PTInstructions.Resolve-PTSkillsDocument' {
     }
 }
 
+Describe 'PTInstructions.Get-PTDesktopPath' {
+    It 'returns a non-empty desktop path' {
+        Get-PTDesktopPath | Should -Not -BeNullOrEmpty
+    }
+}
+
+Describe 'PTInstructions.Publish-PTOneDriveCopy (dry-run)' {
+    It 'does not upload under -WhatIf and reports Uploaded=$false' {
+        $r = Publish-PTOneDriveCopy -Content 'x' -ItemPath 'PhishTriageAgent/f.md' -WhatIf
+        $r.Uploaded | Should -BeFalse
+    }
+}
+
 Describe 'PTIdentity.ConvertTo-PTUpnLocalPart' {
     It 'sanitizes a display name to a UPN local part' {
         ConvertTo-PTUpnLocalPart -DisplayName 'Phishing Triage Agent' | Should -Be 'phishing-triage-agent'

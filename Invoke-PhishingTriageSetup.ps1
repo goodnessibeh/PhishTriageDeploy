@@ -182,18 +182,25 @@ function Invoke-PTTenantSetup {
         Write-PTStatus -Level SKIP -Message 'No pre-assignable identity (new Agent ID path) - permissions handled in the wizard.'
     }
 
-    # 5. Skills document
+    # 5. Skills document -> Desktop copy (operator pastes into the portal) + OneDrive copy.
+    # These are personal deliverables, not tenant changes, so they are produced in dry-run too.
     $skillsPath = $null
+    $oneDriveUrl = $null
     try {
         $skill = Resolve-PTTenantSkill -Mode $SkillsMode -File $SkillsFile
-        $skillsPath = Join-Path $PSScriptRoot ("skills/resolved-{0}.md" -f ($domain -replace '[^0-9A-Za-z]', '-'))
-        Save-PTSkillsDocument -Content $skill.Content -Path $skillsPath | Out-Null
+        $fileName = 'phishing-triage-runbook-{0}.md' -f ($domain -replace '[^0-9A-Za-z]', '-')
+        $skillsPath = Join-Path (Get-PTDesktopPath) $fileName
+        Save-PTSkillsDocument -Content $skill.Content -Path $skillsPath -WhatIf:$false | Out-Null
+        $od = Publish-PTOneDriveCopy -Content $skill.Content -ItemPath "PhishTriageAgent/$fileName" -WhatIf:$false
+        if ($od.Uploaded) { $oneDriveUrl = $od.WebUrl }
     }
     catch { Write-PTStatus -Level WARN -Message "Skills document step skipped: $($_.Exception.Message)" }
 
     # 6. Prereq report + wizard handoff
+    if ([string]::IsNullOrWhiteSpace($skillsPath)) { $skillsPath = '(runbook not written)' }
     Get-PTPrereqReport | Out-Null
-    Write-PTWizardChecklist -Identity $identity.Identity -SkillsPath $skillsPath -PortalReady $true
+    Write-PTWizardChecklist -Identity $identity.Identity -SkillsPath $skillsPath `
+        -PortalReady $true -OneDriveUrl $oneDriveUrl
 
     return $result
 }
