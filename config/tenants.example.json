@@ -1,0 +1,17 @@
+{
+  "Tenants": [
+    {
+      "UserPrincipalName": "admin@contoso.onmicrosoft.com",
+      "IdentityPath": "ExistingUser",
+      "AgentAccountUpn": "phishing-triage-agent@contoso.onmicrosoft.com",
+      "DisplayName": "Phishing Triage Agent",
+      "SkillsFile": "C:\\SOC\\phishing-triage-skills.md",
+      "SkillsMode": "Append"
+    },
+    {
+      "UserPrincipalName": "admin@fabrikam.onmicrosoft.com",
+      "IdentityPath": "NewAgentId",
+      "SkillsMode": "Default"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "RoleName": "Phishing Triage Agent",
+  "RoleDescription": "Least-privilege role for the MDO Phishing Triage Agent identity.",
+  "DataSource": "Microsoft Defender for Office 365",
+  "PermissionGroup": "Security operations",
+  "Permissions": [
+    { "name": "Security data basics", "level": "read", "note": "Basic security data: alerts, incidents." },
+    { "name": "Alerts", "level": "manage", "note": "Classify, own and update alert state." },
+    { "name": "Security Copilot", "level": "read", "note": "Access Security Copilot capabilities." },
+    { "name": "Email & collaboration metadata", "level": "read", "note": "Metadata of user-reported emails." },
+    { "name": "Email & collaboration content: Emails associated with alerts", "level": "read", "note": "Content of alert-linked reported emails (scoped variant)." }
+  ]
+}

@@ -1,0 +1,15 @@
+# Real tenant config — never commit (parity with MDOMigrate)
+config/tenants.json
+
+# Resolved / operator-specific skills files (keep only the shipped default)
+skills/resolved-*.md
+skills/*.local.md
+
+# PowerShell / test output
+*.log
+TestResults/
+coverage.xml
+
+# OS cruft
+.DS_Store
+Thumbs.db
