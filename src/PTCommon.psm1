@@ -110,6 +110,44 @@ function Write-PTStatus {
     Write-Host ('  [{0,-6}] {1}' -f $Level, $Message) -ForegroundColor $colour
 }
 
+function Initialize-PTGraphModule {
+    <#
+        Ensures Microsoft.Graph.Authentication is installed and imported. Bootstraps TLS 1.2, the
+        NuGet package provider and a trusted PSGallery when needed (common on a fresh box), and
+        throws a clear, actionable error if it still cannot install/load the module.
+    #>
+    [CmdletBinding()]
+    param()
+
+    if (Get-Module Microsoft.Graph.Authentication) { return }
+    if (Get-Module Microsoft.Graph.Authentication -ListAvailable) {
+        Import-Module Microsoft.Graph.Authentication -ErrorAction Stop
+        return
+    }
+
+    Write-PTStatus -Level INFO -Message 'Microsoft.Graph.Authentication not found - installing for the current user...'
+    try {
+        # Older hosts default to TLS 1.0/1.1, which the PowerShell Gallery rejects.
+        [Net.ServicePointManager]::SecurityProtocol =
+            [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+        if (-not (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue)) {
+            Install-PackageProvider -Name NuGet -MinimumVersion '2.8.5.201' -Scope CurrentUser -Force | Out-Null
+        }
+        Install-Module Microsoft.Graph.Authentication -Scope CurrentUser -Repository PSGallery -Force -AllowClobber -ErrorAction Stop
+    }
+    catch {
+        throw ("Could not install Microsoft.Graph.Authentication automatically ($($_.Exception.Message)). " +
+            "Install it manually in PowerShell 7 and re-run:  " +
+            "Install-Module Microsoft.Graph.Authentication -Scope CurrentUser -Force")
+    }
+
+    try { Import-Module Microsoft.Graph.Authentication -ErrorAction Stop }
+    catch {
+        throw ("Microsoft.Graph.Authentication installed but could not be loaded ($($_.Exception.Message)). " +
+            "Open a fresh PowerShell 7 session and re-run.")
+    }
+}
+
 function Connect-PTGraph {
     <#
         Connects to Microsoft Graph with interactive delegated OAuth (browser sign-in):
@@ -125,25 +163,31 @@ function Connect-PTGraph {
         [switch]$ForceReconnect
     )
 
-    if (-not (Get-Module Microsoft.Graph.Authentication -ListAvailable)) {
-        Write-PTStatus -Level INFO -Message 'Installing Microsoft.Graph.Authentication module...'
-        Install-Module Microsoft.Graph.Authentication -Scope CurrentUser -Force -AllowClobber
-    }
-    Import-Module Microsoft.Graph.Authentication -ErrorAction Stop
+    Initialize-PTGraphModule
 
+    # Reuse an open session only when it already serves the target tenant. A session for a
+    # different tenant (or -ForceReconnect) is dropped so a fresh interactive sign-in is
+    # triggered - rather than silently reusing a wrong-tenant token and failing the guard.
     $existing = Get-MgContext -ErrorAction SilentlyContinue
-    if ($existing -and $ForceReconnect) {
+    $existingDomain = if ($existing -and $existing.Account) { ($existing.Account -split '@', 2)[-1] } else { $null }
+    $servesTarget = (-not $TenantDomain) -or ($existingDomain -and $existingDomain -ieq $TenantDomain)
+
+    if ($existing -and ($ForceReconnect -or -not $servesTarget)) {
+        if ($TenantDomain -and -not $servesTarget) {
+            Write-PTStatus -Level INFO -Message "Open session is a different tenant ($existingDomain); reconnecting to '$TenantDomain'."
+        }
         Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
         $existing = $null
     }
 
-    if ($UserPrincipalName) {
-        Write-PTStatus -Level INFO -Message "Sign in as '$UserPrincipalName' (or another admin of this tenant)."
+    if (-not $existing) {
+        if ($UserPrincipalName) {
+            Write-PTStatus -Level INFO -Message "Sign in as '$UserPrincipalName' (or another admin of the '$TenantDomain' tenant)."
+        }
+        $connectParams = @{ Scopes = $Scopes; NoWelcome = $true }
+        if ($TenantDomain) { $connectParams['TenantId'] = $TenantDomain }
+        Connect-MgGraph @connectParams -ErrorAction Stop
     }
-
-    $connectParams = @{ Scopes = $Scopes; NoWelcome = $true }
-    if ($TenantDomain) { $connectParams['TenantId'] = $TenantDomain }
-    Connect-MgGraph @connectParams -ErrorAction Stop
 
     if ($TenantDomain) {
         Assert-PTTenant -Domain $TenantDomain
