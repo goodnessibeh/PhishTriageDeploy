@@ -70,6 +70,20 @@ Describe 'PTReport.Get-PTExitCodeName' {
     }
 }
 
+Describe 'PTCommon.Read-PTInteractiveConfig (mocked prompts)' {
+    It 'builds a tenant entry from prompts and defaults' {
+        Mock -ModuleName PTCommon Read-Host {
+            if ($Prompt -match 'Admin UPN') { 'admin@contoso.onmicrosoft.com' }
+            elseif ($Prompt -match 'Add another') { 'n' }
+            else { '' }
+        }
+        $cfg = Read-PTInteractiveConfig
+        @($cfg.Tenants).Count | Should -Be 1
+        $cfg.Tenants[0].UserPrincipalName | Should -Be 'admin@contoso.onmicrosoft.com'
+        $cfg.Tenants[0].SkillsMode | Should -Be 'Default'
+    }
+}
+
 Describe 'PTLicense.Test-PTMdoPlan2 (mocked Graph)' {
     It 'returns Present when the MDO P2 service plan is enabled' {
         Mock -ModuleName PTLicense Invoke-PTGraphRequest {

@@ -48,6 +48,12 @@ Only `UserPrincipalName` is required per tenant; the domain is derived from it.
 Optional per tenant: `IdentityPath` (`ExistingUser`/`NewAgentId`), `AgentAccountUpn`,
 `DisplayName`, `SkillsFile`, `SkillsMode` (`Default`/`Append`/`Replace`).
 
+**No config file?** If `tenants.json` is absent and the session is interactive, the tool
+prompts for every field (UPN, identity path, agent account UPN, display name, skills
+mode/file), loops for multiple tenants, and offers to save it to `tenants.json` for next
+time. Passing `-Tenant admin@contoso.onmicrosoft.com` also works standalone. In a
+non-interactive (unattended) run with no config it fails fast instead of hanging.
+
 ## Run
 
 ```powershell

@@ -203,10 +203,30 @@ $mode = if ($Live) { 'LIVE' } else { 'DRY-RUN (no writes; pass -Live to apply)' 
 Write-PTStatus -Level INFO -Message "Phishing Triage Agent setup - mode: $mode"
 
 $config = Get-PTConfig -ConfigPath $ConfigPath
-if (-not $config) { Write-PTStatus -Level FAIL -Message 'No config/tenants.json found. Copy tenants.example.json and edit it.'; exit 1 }
+$synthesized = $false
+if (-not $config) {
+    if ($Tenant) {
+        # -Tenant supplied standalone: build a minimal config from it (other fields prompt at their steps).
+        $config = [pscustomobject]@{ Tenants = @([pscustomobject]@{ UserPrincipalName = $Tenant }) }
+        $synthesized = $true
+    }
+    elseif (Test-PTInteractive) {
+        Write-PTStatus -Level WARN -Message 'No config/tenants.json found - starting interactive setup.'
+        $config = Read-PTInteractiveConfig
+        $save = Read-Host 'Save these details to config/tenants.json for next time? (y/N)'
+        if ($save -match '^(y|yes)$') { Save-PTConfig -Config $config -Path $ConfigPath | Out-Null }
+        $synthesized = $true
+    }
+    else {
+        Write-PTStatus -Level FAIL -Message 'No config/tenants.json found (non-interactive). Copy tenants.example.json and edit it.'
+        exit 1
+    }
+}
 
 $tenants = @(Get-PTProperty $config 'Tenants')
-if ($Tenant) { $tenants = @($tenants | Where-Object { (Get-PTProperty $_ 'UserPrincipalName') -like "*$Tenant*" }) }
+if ($Tenant -and -not $synthesized) {
+    $tenants = @($tenants | Where-Object { (Get-PTProperty $_ 'UserPrincipalName') -like "*$Tenant*" })
+}
 if (-not $tenants.Count) { Write-PTStatus -Level FAIL -Message 'No matching tenants in config.'; exit 1 }
 
 $results = @()

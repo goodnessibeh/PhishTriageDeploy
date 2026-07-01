@@ -251,6 +251,87 @@ function Invoke-PTGraphRequest {
     }
 }
 
+function Test-PTInteractive {
+    <# True when the session can prompt the operator (interactive host, stdin not redirected). #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param()
+    try { return ([Environment]::UserInteractive -and -not [System.Console]::IsInputRedirected) }
+    catch { return $false }
+}
+
+function Read-PTChoice {
+    <# Prompts for one of a fixed set of options, returning $Default on empty input. #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)][string]$Prompt,
+        [Parameter(Mandatory)][string[]]$Option,
+        [Parameter(Mandatory)][string]$Default
+    )
+    $label = "$Prompt [$($Option -join '/')] (default: $Default)"
+    while ($true) {
+        $answer = Read-Host $label
+        if ([string]::IsNullOrWhiteSpace($answer)) { return $Default }
+        $match = $Option | Where-Object { $_ -eq $answer }
+        if ($match) { return $match }
+        Write-PTStatus -Level WARN -Message "Enter one of: $($Option -join ', ')."
+    }
+}
+
+function Read-PTInteractiveConfig {
+    <#
+        Interactively builds a tenants.json-shaped config object, prompting for every field a
+        tenant entry supports (UPN, identity path, agent account UPN, display name, skills mode,
+        skills file). Loops so several tenants can be entered in one run.
+    #>
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param()
+
+    $tenants = @()
+    do {
+        $upn = Read-Host 'Admin UPN (required, e.g. admin@contoso.onmicrosoft.com)'
+        while ([string]::IsNullOrWhiteSpace($upn) -or $upn -notmatch '@') {
+            $upn = Read-Host 'Enter a valid admin UPN (name@domain)'
+        }
+        $identityPath = Read-PTChoice -Prompt 'Identity path' -Option @('Auto', 'ExistingUser', 'NewAgentId') -Default 'Auto'
+        $agentUpn = Read-Host 'Agent account UPN (optional - blank to skip)'
+        $displayName = Read-Host 'Identity display name (optional - blank to skip)'
+        $skillsMode = Read-PTChoice -Prompt 'Skills mode' -Option @('Default', 'Append', 'Replace') -Default 'Default'
+        $skillsFile = ''
+        if ($skillsMode -in @('Append', 'Replace')) { $skillsFile = Read-Host 'Skills file path (Windows or WSL)' }
+
+        $entry = [ordered]@{ UserPrincipalName = $upn.Trim() }
+        if ($identityPath -ne 'Auto') { $entry['IdentityPath'] = $identityPath }
+        if (-not [string]::IsNullOrWhiteSpace($agentUpn)) { $entry['AgentAccountUpn'] = $agentUpn.Trim() }
+        if (-not [string]::IsNullOrWhiteSpace($displayName)) { $entry['DisplayName'] = $displayName.Trim() }
+        $entry['SkillsMode'] = $skillsMode
+        if (-not [string]::IsNullOrWhiteSpace($skillsFile)) { $entry['SkillsFile'] = $skillsFile.Trim() }
+
+        $tenants += [pscustomobject]$entry
+        $more = Read-Host 'Add another tenant? (y/N)'
+    } while ($more -match '^(y|yes)$')
+
+    return [pscustomobject]@{ Tenants = $tenants }
+}
+
+function Save-PTConfig {
+    <# Writes a config object to tenants.json (default config/tenants.json). Returns the path. #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)] $Config,
+        [string]$Path
+    )
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        $Path = Join-Path (Split-Path $PSScriptRoot -Parent) 'config/tenants.json'
+    }
+    $Config | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $Path -Encoding utf8
+    Write-PTStatus -Level OK -Message "Saved tenant config to '$Path'."
+    return $Path
+}
+
 Export-ModuleMember -Function Get-PTDefaultScope, Get-PTProperty, Get-PTConfig, Get-PTDomainFromUpn,
     Write-PTStatus, Connect-PTGraph, Get-PTVerifiedDomain, Assert-PTTenant, Test-PTAdminRole,
-    Invoke-PTGraphRequest
+    Invoke-PTGraphRequest, Test-PTInteractive, Read-PTInteractiveConfig, Save-PTConfig
