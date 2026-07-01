@@ -93,7 +93,8 @@ function Write-PTWizardChecklist {
     param(
         [Parameter(Mandatory)][AllowNull()]$Identity,
         [Parameter(Mandatory)][string]$SkillsPath,
-        [Parameter(Mandatory)][bool]$PortalReady
+        [Parameter(Mandatory)][bool]$PortalReady,
+        [string]$PromptbookPath
     )
 
     Write-Host ''
@@ -135,8 +136,20 @@ function Write-PTWizardChecklist {
     Write-Host ("       {0}" -f $SkillsPath)
 
     Write-Host ''
-    Write-Host '  5. Reminder: the first-party agent has no instructions API. The skills document'
-    Write-Host '     is a runbook you apply manually in the portal - there is nothing further to'
+    Write-Host '  5. Recreate the triage promptbook in Security Copilot'
+    Write-Host '     (securitycopilot.microsoft.com > Promptbooks). Promptbooks are portal-authored'
+    Write-Host '     (no file import): run its prompts once in a session, then Create promptbook.'
+    Write-Host '     The spec was saved to your Desktop:'
+    if (-not [string]::IsNullOrWhiteSpace($PromptbookPath)) {
+        Write-Host ("       {0}" -f $PromptbookPath)
+    }
+    else {
+        Write-Host '       (promptbook not written)'
+    }
+
+    Write-Host ''
+    Write-Host '  6. Reminder: the first-party agent has no instructions API. The runbook and'
+    Write-Host '     promptbook are applied manually in the portal - there is nothing further to'
     Write-Host '     automate from this tool.'
 
     Write-Host ''

@@ -47,7 +47,9 @@ param(
     [switch]$Force,
     [ValidateSet('Create', 'SelectExisting', 'Skip', 'Prompt')][string]$IdentityMode = 'Prompt',
     [ValidateSet('Default', 'Append', 'Replace')][string]$SkillsMode = 'Default',
-    [string]$SkillsFile
+    [string]$SkillsFile,
+    [ValidateSet('Default', 'Append', 'Replace')][string]$PromptbookMode = 'Default',
+    [string]$PromptbookFile
 )
 
 # --- exit-code map (see PTReport/Get-PTExitCodeName) ---
@@ -70,18 +72,18 @@ Get-ChildItem (Join-Path $PSScriptRoot 'src') -Filter 'PT*.psm1' |
     Where-Object { $_.Name -ne 'PTCommon.psm1' } |
     ForEach-Object { Import-Module $_.FullName -Force -ErrorAction Stop }
 
-function Resolve-PTTenantSkill {
-    <# Resolves the effective skills document for a tenant (default/append/replace). #>
+function Resolve-PTTenantDocument {
+    <# Resolves a default/append/replace document (runbook or promptbook) for a tenant. #>
     [CmdletBinding()]
     [OutputType([pscustomobject])]
-    param([string]$Mode, [string]$File)
+    param([string]$Mode, [string]$File, [Parameter(Mandatory)][string]$DefaultPath)
 
     $userContent = $null
     if ($Mode -in @('Append', 'Replace')) {
-        if ([string]::IsNullOrWhiteSpace($File)) { throw "SkillsMode '$Mode' needs -SkillsFile." }
+        if ([string]::IsNullOrWhiteSpace($File)) { throw "Mode '$Mode' requires a source file but none was supplied." }
         $userContent = Get-PTSkillsContent -Path $File
     }
-    return Resolve-PTSkillsDocument -Mode $Mode -UserContent $userContent
+    return Resolve-PTSkillsDocument -Mode $Mode -UserContent $userContent -DefaultPath $DefaultPath
 }
 
 function Invoke-PTTenantSetup {
@@ -93,7 +95,9 @@ function Invoke-PTTenantSetup {
         [string]$IdentityMode = 'Prompt',
         [switch]$Force,
         [string]$SkillsMode = 'Default',
-        [string]$SkillsFile
+        [string]$SkillsFile,
+        [string]$PromptbookMode = 'Default',
+        [string]$PromptbookFile
     )
 
     $upn = Get-PTProperty $TenantEntry 'UserPrincipalName'
@@ -182,22 +186,35 @@ function Invoke-PTTenantSetup {
         Write-PTStatus -Level SKIP -Message 'No pre-assignable identity (new Agent ID path) - permissions handled in the wizard.'
     }
 
-    # 5. Skills document -> Desktop runbook copy the operator pastes into the portal.
-    # A personal deliverable, not a tenant change, so it is produced in dry-run too.
+    # 5. Runbook + promptbook -> Desktop copies the operator uses in the portal. Per-tenant
+    # config overrides the CLI defaults. Personal deliverables, so produced in dry-run too.
     $skillsPath = $null
+    $promptbookPath = $null
     try {
-        $skill = Resolve-PTTenantSkill -Mode $SkillsMode -File $SkillsFile
-        $fileName = 'phishing-triage-runbook-{0}.md' -f ($domain -replace '[^0-9A-Za-z]', '-')
-        $skillsPath = Join-Path (Get-PTDesktopPath) $fileName
-        Save-PTSkillsDocument -Content $skill.Content -Path $skillsPath -WhatIf:$false | Out-Null
+        $slug = $domain -replace '[^0-9A-Za-z]', '-'
+        $desktop = Get-PTDesktopPath
+
+        $rbMode = [string](Get-PTProperty $TenantEntry 'SkillsMode' $SkillsMode)
+        $rbFile = [string](Get-PTProperty $TenantEntry 'SkillsFile' $SkillsFile)
+        $runbook = Resolve-PTTenantDocument -Mode $rbMode -File $rbFile -DefaultPath (Get-PTDefaultSkillsPath)
+        $skillsPath = Join-Path $desktop ("phishing-triage-runbook-{0}.md" -f $slug)
+        Save-PTSkillsDocument -Content $runbook.Content -Path $skillsPath -WhatIf:$false | Out-Null
+
+        $pbMode = [string](Get-PTProperty $TenantEntry 'PromptbookMode' $PromptbookMode)
+        $pbFile = [string](Get-PTProperty $TenantEntry 'PromptbookFile' $PromptbookFile)
+        $promptbook = Resolve-PTTenantDocument -Mode $pbMode -File $pbFile -DefaultPath (Get-PTDefaultPromptbookPath)
+        $promptbookPath = Join-Path $desktop ("phishing-triage-promptbook-{0}.md" -f $slug)
+        Save-PTSkillsDocument -Content $promptbook.Content -Path $promptbookPath -WhatIf:$false | Out-Null
     }
-    catch { Write-PTStatus -Level WARN -Message "Skills document step skipped: $($_.Exception.Message)" }
+    catch { Write-PTStatus -Level WARN -Message "Document step skipped: $($_.Exception.Message)" }
 
     # 6. Prereq report -> readiness -> wizard handoff
     if ([string]::IsNullOrWhiteSpace($skillsPath)) { $skillsPath = '(runbook not written)' }
+    if ([string]::IsNullOrWhiteSpace($promptbookPath)) { $promptbookPath = '(promptbook not written)' }
     $prereqs = @(Get-PTPrereqReport)
     $portalReady = @($prereqs | Where-Object { $_.State -ne 'On' }).Count -eq 0
-    Write-PTWizardChecklist -Identity $identity.Identity -SkillsPath $skillsPath -PortalReady $portalReady
+    Write-PTWizardChecklist -Identity $identity.Identity -SkillsPath $skillsPath `
+        -PromptbookPath $promptbookPath -PortalReady $portalReady
 
     return $result
 }
@@ -237,7 +254,8 @@ $results = @()
 foreach ($entry in $tenants) {
     try {
         $results += Invoke-PTTenantSetup -TenantEntry $entry -IdentityMode $IdentityMode `
-            -Force:$Force -SkillsMode $SkillsMode -SkillsFile $SkillsFile
+            -Force:$Force -SkillsMode $SkillsMode -SkillsFile $SkillsFile `
+            -PromptbookMode $PromptbookMode -PromptbookFile $PromptbookFile
     }
     catch {
         Write-PTStatus -Level FAIL -Message "Unhandled error for tenant: $($_.Exception.Message)"

@@ -21,8 +21,9 @@ handoff checklist. Concretely, per tenant it:
    agent identity, or skip (portal-created Entra Agent ID).
 5. **Permissions** — idempotently reconciles a custom **Defender URBAC** role holding the
    five required permissions and assigns it to the identity.
-6. **Skills document** — resolves a default/append/replace phishing-triage runbook and
-   saves it to your Desktop for the operator to paste into the portal.
+6. **Runbook + promptbook** — resolves a default/append/replace phishing-triage **runbook**
+   and a Security Copilot **promptbook** spec, saving both to your Desktop for the operator
+   to apply in the portal.
 7. **Prereq report** (drives the handoff readiness flag) + **wizard handoff** checklist.
 
 ## Requirements
@@ -46,7 +47,9 @@ Only `UserPrincipalName` is required per tenant; the domain is derived from it.
 ```
 
 Optional per tenant: `IdentityPath` (`ExistingUser`/`NewAgentId`), `AgentAccountUpn`,
-`DisplayName`, `SkillsFile`, `SkillsMode` (`Default`/`Append`/`Replace`).
+`DisplayName`, `SkillsFile`, `SkillsMode` (`Default`/`Append`/`Replace`), and
+`PromptbookFile`, `PromptbookMode` for the promptbook spec. Per-tenant values override the
+matching CLI defaults.
 
 **No config file?** If `tenants.json` is absent and the session is interactive, the tool
 prompts for every field (UPN, identity path, agent account UPN, display name, skills
@@ -70,15 +73,21 @@ non-interactive (unattended) run with no config it fails fast instead of hanging
 Exit codes: `0` success (manual handoff remains) · `10` wrong tenant · `11` no admin role ·
 `20` MDO P2 absent · `21` SCU absent · `22` SCU unconfirmed · `30` write failure.
 
-## The skills / instructions document
+## The runbook and promptbook
 
-`skills/default-phishing-triage-skills.md` is a managed runbook covering whitelists,
+`skills/default-phishing-triage-skills.md` is a managed **runbook** covering whitelists,
 custom instructions, analyst insights, evidence-backed verdicts, business-logic /
 false-positive reduction, alert search & closure, and Microsoft Threat Intel checks.
-Point the tool at your own copy and `Append` or `Replace`. At handoff the resolved runbook
-is saved to your **Desktop** (path shown) so you can copy its content straight into the
-portal. It is written even in a dry-run, since it is a personal artifact, not a tenant
-change. There is no cloud copy.
+
+`skills/default-phishing-triage-promptbook.md` is a Security Copilot **promptbook** spec
+(name, tags, description, `<ANGLE_BRACKET>` inputs, and an ordered prompt sequence) for the
+same workflow. Promptbooks are **portal-authored only** (no file import / API), so the spec
+is something the operator recreates in Security Copilot.
+
+Point the tool at your own copies and `Append` or `Replace` (`-SkillsFile`/`-SkillsMode`,
+`-PromptbookFile`/`-PromptbookMode`). At handoff both are saved to your **Desktop** (paths
+shown). They are written even in a dry-run, since they are personal artifacts, not tenant
+changes. There is no cloud copy.
 
 > Note: the first-party agent has **no instructions/knowledge API** — it is tuned only by
 > portal-typed analyst feedback. This document is therefore a source-of-truth runbook the
@@ -92,7 +101,7 @@ Invoke-PhishingTriageSetup.ps1   orchestrator
 config/                          tenants.json, permissions.json, analyzer settings
 src/                             PTCommon, PTLicense, PTIdentity, PTPermissions,
                                  PTPrereqs, PTReport, PTInstructions
-skills/                          default skills markdown
+skills/                          default runbook + promptbook markdown
 tests/                           Pester unit/contract tests
 docs/plans/                      design + implementation plan
 ```

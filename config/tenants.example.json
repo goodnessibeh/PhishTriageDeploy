@@ -6,7 +6,9 @@
       "AgentAccountUpn": "phishing-triage-agent@contoso.onmicrosoft.com",
       "DisplayName": "Phishing Triage Agent",
       "SkillsFile": "C:\\SOC\\phishing-triage-skills.md",
-      "SkillsMode": "Append"
+      "SkillsMode": "Append",
+      "PromptbookFile": "C:\\SOC\\phishing-triage-promptbook.md",
+      "PromptbookMode": "Append"
     },
     {
       "UserPrincipalName": "admin@fabrikam.onmicrosoft.com",

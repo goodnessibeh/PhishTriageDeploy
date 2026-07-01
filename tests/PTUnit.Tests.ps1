@@ -50,6 +50,17 @@ Describe 'PTInstructions.Get-PTDesktopPath' {
     }
 }
 
+Describe 'PTInstructions default document paths' {
+    It 'resolves the shipped runbook and promptbook defaults to existing files' {
+        Test-Path -LiteralPath (Get-PTDefaultSkillsPath)     | Should -BeTrue
+        Test-Path -LiteralPath (Get-PTDefaultPromptbookPath) | Should -BeTrue
+    }
+    It 'resolves a promptbook in Replace mode from its own default path' {
+        $r = Resolve-PTSkillsDocument -Mode Replace -UserContent 'PB' -DefaultPath (Get-PTDefaultPromptbookPath)
+        $r.Content | Should -Be 'PB'
+    }
+}
+
 Describe 'PTIdentity.ConvertTo-PTUpnLocalPart' {
     It 'sanitizes a display name to a UPN local part' {
         ConvertTo-PTUpnLocalPart -DisplayName 'Phishing Triage Agent' | Should -Be 'phishing-triage-agent'

@@ -15,11 +15,19 @@
 #>
 
 function Get-PTDefaultSkillsPath {
-    <# Returns the absolute path to the shipped default skills markdown. #>
+    <# Returns the absolute path to the shipped default skills (runbook) markdown. #>
     [CmdletBinding()]
     [OutputType([string])]
     param()
     return (Join-Path (Split-Path $PSScriptRoot -Parent) 'skills/default-phishing-triage-skills.md')
+}
+
+function Get-PTDefaultPromptbookPath {
+    <# Returns the absolute path to the shipped default promptbook spec markdown. #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param()
+    return (Join-Path (Split-Path $PSScriptRoot -Parent) 'skills/default-phishing-triage-promptbook.md')
 }
 
 function ConvertTo-PTLocalPath {
@@ -130,5 +138,6 @@ function Get-PTDesktopPath {
     return $desktop
 }
 
-Export-ModuleMember -Function Get-PTDefaultSkillsPath, ConvertTo-PTLocalPath, Get-PTSkillsContent,
-    Resolve-PTSkillsDocument, Save-PTSkillsDocument, Get-PTDesktopPath
+Export-ModuleMember -Function Get-PTDefaultSkillsPath, Get-PTDefaultPromptbookPath,
+    ConvertTo-PTLocalPath, Get-PTSkillsContent, Resolve-PTSkillsDocument, Save-PTSkillsDocument,
+    Get-PTDesktopPath
