@@ -2,7 +2,7 @@
 <#
     PTCommon.psm1
     Shared building blocks for the Phishing Triage Agent deployment tool:
-      - Get-PTConfig            : load config/tenants.json (UPN-based, parity with MDOMigrate)
+      - Get-PTConfig            : load config/tenants.json (UPN-based)
       - Get-PTDomainFromUpn     : derive tenant domain from an admin UPN
       - Get-PTProperty          : safe property access for JSON-deserialised objects
       - Write-PTStatus          : consistent [OK]/[SKIP]/[DRYRUN]/[FAIL]/[INFO] host output
@@ -112,8 +112,8 @@ function Write-PTStatus {
 
 function Connect-PTGraph {
     <#
-        Connects to Microsoft Graph with interactive delegated OAuth (same MSAL sign-in UX as
-        MDOMigrate's Connect-ExchangeOnline): no secrets stored, tokens held in memory only.
+        Connects to Microsoft Graph with interactive delegated OAuth (browser sign-in):
+        no secrets stored, tokens held in memory only.
         Installs the Microsoft.Graph.Authentication module on first use. Pass -TenantDomain to
         bind the sign-in to a specific tenant; -Scopes to override the default scope set.
     #>

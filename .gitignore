@@ -1,4 +1,4 @@
-# Real tenant config — never commit (parity with MDOMigrate)
+# Real tenant config - never commit
 config/tenants.json
 
 # Resolved / operator-specific skills files (keep only the shipped default)

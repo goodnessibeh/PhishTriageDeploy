@@ -6,7 +6,7 @@
     permissions, reports manual prerequisites, and prints the portal wizard handoff.
 
 .DESCRIPTION
-    Multi-tenant, idempotent reconciler. Mirrors the MDOMigrate idioms: UPN-based
+    Multi-tenant, idempotent reconciler. UPN-based
     config/tenants.json, interactive delegated OAuth (Connect-MgGraph), wrong-tenant guard,
     and DRY-RUN by default (writes only under -Live). The Phishing Triage Agent itself is
     created in the Defender portal wizard (no API exists); this tool automates everything

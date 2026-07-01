@@ -3,9 +3,8 @@
 PowerShell 7 tooling that **stages a Microsoft tenant for the Defender for Office 365
 Phishing Triage Agent** and hands off the final, portal-only setup to an operator.
 
-It mirrors the authentication and safety model of the companion `MDOMigrate` project:
-UPN-based `config/tenants.json`, interactive delegated OAuth (no stored secrets),
-a wrong-tenant guard before any write, and **dry-run by default**.
+Its authentication and safety model: UPN-based `config/tenants.json`, interactive delegated
+OAuth (no stored secrets), a wrong-tenant guard before any write, and **dry-run by default**.
 
 ## What it does (and the honest boundary)
 
@@ -33,6 +32,22 @@ handoff checklist. Concretely, per tenant it:
 - An admin account with the **Security Administrator** Entra role
 - Licenses: **Microsoft Defender for Office 365 Plan 2** and **Security Copilot** (SCU
   capacity)
+
+## Allow scripts to run (Windows)
+
+On Windows, allow local scripts to run (one-time, current user only). Run this in
+PowerShell 7:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+`RemoteSigned` lets your local scripts run while still requiring downloaded scripts to be
+signed. To allow scripts for the current session only (no persistent change), use instead:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
+```
 
 ## Configure
 

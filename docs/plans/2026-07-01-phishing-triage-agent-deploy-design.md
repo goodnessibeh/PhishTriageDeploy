@@ -14,9 +14,8 @@ A PowerShell 7 tool that **stages a tenant for the Microsoft Defender for Office
 five required Defender Unified RBAC (URBAC) permissions — then hands off the final,
 portal-only setup step to a human operator.
 
-It reuses the authentication and safety idioms of the existing `MDOMigrate` project
-(interactive delegated OAuth, UPN-based config, wrong-tenant guard, dry-run by default,
-idempotent "already exists = success").
+Its authentication and safety idioms: interactive delegated OAuth, UPN-based config,
+wrong-tenant guard, dry-run by default, idempotent "already exists = success".
 
 ---
 
@@ -51,8 +50,7 @@ operator at the end of every run.
 - **Run model:** *Multi-tenant / MSP, idempotent reconciler* — run per client tenant,
   safe to re-run; asserts state and reports/fixes drift.
 - **Stack:** PowerShell 7 + `Microsoft.Graph` module, interactive `Connect-MgGraph`
-  (same MSAL delegated-OAuth UX as MDOMigrate's `Connect-ExchangeOnline`; no stored
-  secrets, tokens in memory).
+  (interactive MSAL delegated-OAuth browser sign-in; no stored secrets, tokens in memory).
 - **License gate:** MDO Plan 2 is a **hard gate** (`subscribedSkus`). SCU capacity is
   **best-effort ARM check, else confirm** — if detectable and absent → exit; if
   unreadable → prompt operator to confirm before continuing.
@@ -101,7 +99,7 @@ automatable work done, zero, prints checklist).
 
 ## 5. Components & file layout
 
-Mirrors MDOMigrate; each `.psm1` stays under the 400-line limit.
+Each `.psm1` stays under the 400-line limit.
 
 ```
 PhishTriageDeploy/
@@ -125,7 +123,7 @@ final report and decides exit codes.
 
 ---
 
-## 6. Tenant config & authentication (MDOMigrate-parity)
+## 6. Tenant config & authentication
 
 `config/tenants.example.json` (tracked; real `tenants.json` is git-ignored):
 
@@ -146,8 +144,8 @@ final report and decides exit codes.
 }
 ```
 
-- **`UserPrincipalName`** — admin sign-in UPN; *the only required field* (parity with
-  MDOMigrate). Domain is derived from the part after `@` and drives the wrong-tenant guard.
+- **`UserPrincipalName`** — admin sign-in UPN; *the only required field*. Domain is derived
+  from the part after `@` and drives the wrong-tenant guard.
 - **`IdentityPath`** *(optional)* — `ExistingUser` / `NewAgentId` / `Auto` (default:
   prompt interactively).
 - **`AgentAccountUpn`, `DisplayName`** *(optional)* — supplying both enables unattended
@@ -264,7 +262,7 @@ select (name + objectId), and the Security Administrator reminder.
 - **Integration (opt-in, disposable tenant):** full dry-run (zero writes), then `-Live`
   run asserting **idempotency — run twice, second run all `[OK] already present`, zero
   drift**.
-- **Static:** `PSScriptAnalyzer` (MDOMigrate settings), `#Requires -Version 7.0`,
+- **Static:** `PSScriptAnalyzer` (repo settings), `#Requires -Version 7.0`,
   400-line-per-file limit in CI.
 
 ---
