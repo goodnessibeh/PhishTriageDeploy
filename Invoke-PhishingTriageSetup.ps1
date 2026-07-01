@@ -198,13 +198,13 @@ function Invoke-PTTenantSetup {
         $rbFile = [string](Get-PTProperty $TenantEntry 'SkillsFile' $SkillsFile)
         $runbook = Resolve-PTTenantDocument -Mode $rbMode -File $rbFile -DefaultPath (Get-PTDefaultSkillsPath)
         $skillsPath = Join-Path $desktop ("phishing-triage-runbook-{0}.md" -f $slug)
-        Save-PTSkillsDocument -Content $runbook.Content -Path $skillsPath -WhatIf:$false | Out-Null
+        Save-PTSkillsDocument -Content $runbook.Content -Path $skillsPath -Label 'Runbook' -WhatIf:$false | Out-Null
 
         $pbMode = [string](Get-PTProperty $TenantEntry 'PromptbookMode' $PromptbookMode)
         $pbFile = [string](Get-PTProperty $TenantEntry 'PromptbookFile' $PromptbookFile)
         $promptbook = Resolve-PTTenantDocument -Mode $pbMode -File $pbFile -DefaultPath (Get-PTDefaultPromptbookPath)
         $promptbookPath = Join-Path $desktop ("phishing-triage-promptbook-{0}.md" -f $slug)
-        Save-PTSkillsDocument -Content $promptbook.Content -Path $promptbookPath -WhatIf:$false | Out-Null
+        Save-PTSkillsDocument -Content $promptbook.Content -Path $promptbookPath -Label 'Promptbook' -WhatIf:$false | Out-Null
     }
     catch { Write-PTStatus -Level WARN -Message "Document step skipped: $($_.Exception.Message)" }
 

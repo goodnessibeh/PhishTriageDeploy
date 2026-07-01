@@ -304,7 +304,11 @@ function Test-PTInteractive {
 }
 
 function Read-PTChoice {
-    <# Prompts for one of a fixed set of options, returning $Default on empty input. #>
+    <#
+        Prompts for one of a fixed set of options. Accepts the option NUMBER (1-based), the
+        option NAME (case-insensitive), or empty input (returns $Default). Options are shown
+        numbered so the operator can just type a digit.
+    #>
     [CmdletBinding()]
     [OutputType([string])]
     param(
@@ -312,13 +316,21 @@ function Read-PTChoice {
         [Parameter(Mandatory)][string[]]$Option,
         [Parameter(Mandatory)][string]$Default
     )
-    $label = "$Prompt [$($Option -join '/')] (default: $Default)"
+    $numbered = @()
+    for ($i = 0; $i -lt $Option.Count; $i++) { $numbered += "[$($i + 1)] $($Option[$i])" }
+    $defaultIndex = [Array]::IndexOf($Option, $Default) + 1
+    $label = "$Prompt $($numbered -join '  ') (default: $defaultIndex=$Default)"
+
     while ($true) {
-        $answer = Read-Host $label
+        $answer = (Read-Host $label).Trim()
         if ([string]::IsNullOrWhiteSpace($answer)) { return $Default }
-        $match = $Option | Where-Object { $_ -eq $answer }
-        if ($match) { return $match }
-        Write-PTStatus -Level WARN -Message "Enter one of: $($Option -join ', ')."
+        $num = 0
+        if ([int]::TryParse($answer, [ref]$num) -and $num -ge 1 -and $num -le $Option.Count) {
+            return $Option[$num - 1]
+        }
+        $named = $Option | Where-Object { $_ -ieq $answer } | Select-Object -First 1
+        if ($named) { return $named }
+        Write-PTStatus -Level WARN -Message "Enter a number 1-$($Option.Count), or one of: $($Option -join ', ')."
     }
 }
 

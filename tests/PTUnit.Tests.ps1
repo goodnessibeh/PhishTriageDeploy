@@ -87,6 +87,27 @@ Describe 'PTReport.Get-PTExitCodeName' {
     }
 }
 
+Describe 'PTCommon.Read-PTChoice accepts numbers, names and default' {
+    It 'returns the option at the typed number' {
+        InModuleScope PTCommon {
+            Mock Read-Host { '2' }
+            Read-PTChoice -Prompt 'Pick' -Option @('Alpha', 'Beta', 'Gamma') -Default 'Alpha' | Should -Be 'Beta'
+        }
+    }
+    It 'still accepts the option name (case-insensitive)' {
+        InModuleScope PTCommon {
+            Mock Read-Host { 'gamma' }
+            Read-PTChoice -Prompt 'Pick' -Option @('Alpha', 'Beta', 'Gamma') -Default 'Alpha' | Should -Be 'Gamma'
+        }
+    }
+    It 'returns the default on empty input' {
+        InModuleScope PTCommon {
+            Mock Read-Host { '' }
+            Read-PTChoice -Prompt 'Pick' -Option @('Alpha', 'Beta') -Default 'Beta' | Should -Be 'Beta'
+        }
+    }
+}
+
 Describe 'PTCommon.Read-PTInteractiveConfig (mocked prompts)' {
     It 'builds a tenant entry from prompts and defaults' {
         Mock -ModuleName PTCommon Read-Host {

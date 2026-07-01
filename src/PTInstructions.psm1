@@ -109,17 +109,18 @@ function Save-PTSkillsDocument {
     [OutputType([string])]
     param(
         [Parameter(Mandatory)][string]$Content,
-        [Parameter(Mandatory)][string]$Path
+        [Parameter(Mandatory)][string]$Path,
+        [string]$Label = 'Document'
     )
     $resolved = ConvertTo-PTLocalPath -Path $Path
-    if ($PSCmdlet.ShouldProcess($resolved, 'Write resolved skills document')) {
+    if ($PSCmdlet.ShouldProcess($resolved, "Write $Label")) {
         $dir = Split-Path -Parent $resolved
         if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
         Set-Content -LiteralPath $resolved -Value $Content -Encoding utf8
-        Write-PTStatus -Level OK -Message "Runbook written to '$resolved'."
+        Write-PTStatus -Level OK -Message "$Label saved to '$resolved'."
     }
     else {
-        Write-PTStatus -Level DRYRUN -Message "Would write runbook to '$resolved'."
+        Write-PTStatus -Level DRYRUN -Message "Would save $Label to '$resolved'."
     }
     return $resolved
 }
