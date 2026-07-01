@@ -15,10 +15,14 @@
 
 # Default delegated scopes. Security Administrator (checked separately) backs the Defender
 # RBAC and agent-governance actions; these scopes cover the automatable Graph surface.
+# NOTE: the Defender XDR Unified RBAC endpoints (/roleManagement/defender) require the
+# Defender-provider scope RoleManagement.ReadWrite.Defender - NOT the Entra-directory
+# provider scope (RoleManagement.*.Directory). Using the directory scope returns HTTP 403.
 $Script:PTDefaultScopes = @(
-    'Organization.Read.All',            # subscribedSkus + organization/verifiedDomains
-    'User.ReadWrite.All',               # create the dedicated agent account
-    'RoleManagement.ReadWrite.Directory' # read directory-role membership + role work
+    'Organization.Read.All',             # subscribedSkus + organization/verifiedDomains
+    'User.ReadWrite.All',                # create the dedicated agent account
+    'Directory.Read.All',                # read the signed-in admin's directory-role membership
+    'RoleManagement.ReadWrite.Defender'  # Defender XDR Unified RBAC: read + assign the agent role
 )
 
 # Entra role template ID for Security Administrator (well-known, tenant-independent).

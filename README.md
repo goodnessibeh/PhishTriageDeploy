@@ -33,6 +33,33 @@ handoff checklist. Concretely, per tenant it:
 - Licenses: **Microsoft Defender for Office 365 Plan 2** and **Security Copilot** (SCU
   capacity)
 
+## Permissions & consent
+
+The signed-in admin needs the Entra **Security Administrator** role (or Global Admin). At
+sign-in the tool requests these Microsoft Graph delegated scopes:
+
+| Scope | Used for |
+|---|---|
+| `Organization.Read.All` | `subscribedSkus` license check + verified domains (tenant guard) |
+| `User.ReadWrite.All` | create the dedicated agent account |
+| `Directory.Read.All` | read the admin's directory-role membership |
+| `RoleManagement.ReadWrite.Defender` | **Defender XDR Unified RBAC** — read + assign the agent role |
+
+Two things that commonly cause a **403** on the Defender RBAC calls:
+
+1. **Admin consent.** `RoleManagement.ReadWrite.Defender` (and the others) require admin
+   consent for the *Microsoft Graph Command Line Tools* app. If you are Security Admin but
+   not Global Admin, a Global Admin may need to grant consent once
+   (Entra → Enterprise applications → Microsoft Graph Command Line Tools → Permissions).
+2. **Unified RBAC not activated.** The `/roleManagement/defender` endpoints only work once
+   Defender Unified RBAC is activated for the **Defender for Office 365** workload
+   (portal-only): **security.microsoft.com → System → Permissions → Roles**. This is a
+   one-time tenant toggle the tool cannot flip for you.
+
+> Note: this is a *different* RBAC surface than Exchange/Security & Compliance PowerShell.
+> Holding Security Administrator is necessary but, for the Defender RBAC calls, not
+> sufficient on its own — the scope must be consented and the workload activated.
+
 ## Allow scripts to run (Windows)
 
 On Windows, allow local scripts to run (one-time, current user only). Run this in

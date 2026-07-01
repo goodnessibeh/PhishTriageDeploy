@@ -273,6 +273,9 @@ select (name + objectId), and the Security Administrator reminder.
   paste-an-id).
 - Exact Defender URBAC **permission identifiers** in `roleDefinitions` payloads (map the
   five human names to their API representation).
+- RESOLVED: the Graph scope for the `/roleManagement/defender` endpoints is
+  `RoleManagement.ReadWrite.Defender` (not `RoleManagement.ReadWrite.Directory`); requires
+  admin consent + Unified RBAC activated for the Defender for Office 365 workload.
 - Whether SCU capacity is readable via ARM in target tenants (drives how often the
   "confirm" branch fires).
 - Resolve the MDO P2 service-plan GUID at runtime from Microsoft's licensing CSV rather

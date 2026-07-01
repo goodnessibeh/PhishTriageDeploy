@@ -98,8 +98,14 @@ function Get-PTUrbacWorkloadItem {
             -Detail ("Defender RBAC state not exposed via Graph. Confirm at $portal")
     }
     catch {
+        $hint = 'Confirm at ' + $portal
+        if ($_.Exception.Message -match '403|Forbidden') {
+            $hint = ('A 403 usually means the RoleManagement.ReadWrite.Defender scope was not consented, ' +
+                'or Unified RBAC is not activated for this workload, or the account is not Security Administrator. ' +
+                'Confirm/activate at ' + $portal)
+        }
         return Get-PTPrereqItem -Name 'URBAC workload activation (MDO)' -State 'VerifyInPortal' `
-            -Detail ("Could not read Defender RBAC via Graph ($($_.Exception.Message)). Confirm at $portal")
+            -Detail ("Could not read Defender RBAC via Graph ($($_.Exception.Message)). $hint")
     }
 }
 
