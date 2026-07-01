@@ -21,9 +21,9 @@ handoff checklist. Concretely, per tenant it:
    agent identity, or skip (portal-created Entra Agent ID).
 5. **Permissions** — idempotently reconciles a custom **Defender URBAC** role holding the
    five required permissions and assigns it to the identity.
-6. **Skills document** — resolves a default/append/replace phishing-triage runbook and can
-   publish it to SharePoint.
-7. **Prereq report** + **wizard handoff** checklist.
+6. **Skills document** — resolves a default/append/replace phishing-triage runbook and
+   saves it to your Desktop for the operator to paste into the portal.
+7. **Prereq report** (drives the handoff readiness flag) + **wizard handoff** checklist.
 
 ## Requirements
 
@@ -76,9 +76,9 @@ Exit codes: `0` success (manual handoff remains) · `10` wrong tenant · `11` no
 custom instructions, analyst insights, evidence-backed verdicts, business-logic /
 false-positive reduction, alert search & closure, and Microsoft Threat Intel checks.
 Point the tool at your own copy and `Append` or `Replace`. At handoff the resolved runbook
-is saved to your **Desktop** (path shown) and uploaded to your **OneDrive** (link shown),
-so you can copy its content straight into the portal. Both copies are produced even in a
-dry-run, since they are personal artifacts, not tenant changes.
+is saved to your **Desktop** (path shown) so you can copy its content straight into the
+portal. It is written even in a dry-run, since it is a personal artifact, not a tenant
+change. There is no cloud copy.
 
 > Note: the first-party agent has **no instructions/knowledge API** — it is tuned only by
 > portal-typed analyst feedback. This document is therefore a source-of-truth runbook the

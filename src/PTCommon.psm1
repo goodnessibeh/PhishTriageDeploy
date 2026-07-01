@@ -18,9 +18,7 @@
 $Script:PTDefaultScopes = @(
     'Organization.Read.All',            # subscribedSkus + organization/verifiedDomains
     'User.ReadWrite.All',               # create the dedicated agent account
-    'RoleManagement.ReadWrite.Directory', # read directory-role membership + role work
-    'Sites.ReadWrite.All',              # optional: publish the skills doc to SharePoint
-    'Files.ReadWrite'                   # save the runbook copy to the operator's OneDrive
+    'RoleManagement.ReadWrite.Directory' # read directory-role membership + role work
 )
 
 # Entra role template ID for Security Administrator (well-known, tenant-independent).
@@ -220,23 +218,15 @@ function Invoke-PTGraphRequest {
         [Parameter(Mandatory)][ValidateSet('GET', 'POST', 'PATCH', 'PUT', 'DELETE')][string]$Method,
         [Parameter(Mandatory)][string]$Uri,
         $Body,
-        [int]$MaxRetries = 4,
-        [string]$ContentType
+        [int]$MaxRetries = 4
     )
 
     for ($attempt = 0; ; $attempt++) {
         try {
             $params = @{ Method = $Method; Uri = $Uri; ErrorAction = 'Stop' }
             if ($null -ne $Body) {
-                if ($ContentType) {
-                    # Raw body (e.g. file-content uploads) - send as-is, do not JSON-encode.
-                    $params['Body'] = $Body
-                    $params['ContentType'] = $ContentType
-                }
-                else {
-                    $params['Body'] = ($Body | ConvertTo-Json -Depth 20)
-                    $params['ContentType'] = 'application/json'
-                }
+                $params['Body'] = ($Body | ConvertTo-Json -Depth 20)
+                $params['ContentType'] = 'application/json'
             }
             return Invoke-MgGraphRequest @params
         }

@@ -93,8 +93,7 @@ function Write-PTWizardChecklist {
     param(
         [Parameter(Mandatory)][AllowNull()]$Identity,
         [Parameter(Mandatory)][string]$SkillsPath,
-        [Parameter(Mandatory)][bool]$PortalReady,
-        [string]$OneDriveUrl
+        [Parameter(Mandatory)][bool]$PortalReady
     )
 
     Write-Host ''
@@ -132,14 +131,8 @@ function Write-PTWizardChecklist {
 
     Write-Host ''
     Write-Host '  4. Copy the runbook content into the portal (apply the whitelists and seed the'
-    Write-Host '     initial feedback). A copy has been saved for you:'
-    Write-Host ("       Desktop  : {0}" -f $SkillsPath)
-    if (-not [string]::IsNullOrWhiteSpace($OneDriveUrl)) {
-        Write-Host ("       OneDrive : {0}" -f $OneDriveUrl)
-    }
-    else {
-        Write-Host '       OneDrive : (not available for this account)'
-    }
+    Write-Host '     initial feedback). The runbook was saved to your Desktop:'
+    Write-Host ("       {0}" -f $SkillsPath)
 
     Write-Host ''
     Write-Host '  5. Reminder: the first-party agent has no instructions API. The skills document'

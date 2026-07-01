@@ -50,13 +50,6 @@ Describe 'PTInstructions.Get-PTDesktopPath' {
     }
 }
 
-Describe 'PTInstructions.Publish-PTOneDriveCopy (dry-run)' {
-    It 'does not upload under -WhatIf and reports Uploaded=$false' {
-        $r = Publish-PTOneDriveCopy -Content 'x' -ItemPath 'PhishTriageAgent/f.md' -WhatIf
-        $r.Uploaded | Should -BeFalse
-    }
-}
-
 Describe 'PTIdentity.ConvertTo-PTUpnLocalPart' {
     It 'sanitizes a display name to a UPN local part' {
         ConvertTo-PTUpnLocalPart -DisplayName 'Phishing Triage Agent' | Should -Be 'phishing-triage-agent'

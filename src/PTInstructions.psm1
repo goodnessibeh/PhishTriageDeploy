@@ -1,18 +1,17 @@
 #Requires -Version 7.0
 <#
     PTInstructions.psm1
-    Manages the phishing-triage skills/instructions document:
+    Manages the phishing-triage skills / runbook document (local files only):
       - Get-PTDefaultSkillsPath : path to the shipped default skills markdown
       - ConvertTo-PTLocalPath   : translate a Windows path (C:\...) to a WSL path when needed
-      - Get-PTSkillsContent     : read skills markdown from a local path or SharePoint (Graph)
-      - Resolve-PTSkills        : merge default + user file per mode (Default/Append/Replace)
-      - Save-PTSkills           : write the resolved doc to a local path (honours -WhatIf)
-      - Publish-PTSkills        : publish the resolved doc to a SharePoint library (honours -WhatIf)
+      - Get-PTSkillsContent     : read skills markdown from a local path
+      - Resolve-PTSkillsDocument: merge default + user file per mode (Default/Append/Replace)
+      - Save-PTSkillsDocument   : write the resolved doc to a local path (honours -WhatIf)
+      - Get-PTDesktopPath       : the operator's Desktop directory for the runbook copy
 
-    Honesty note: the first-party Phishing Triage Agent has NO file/SharePoint ingestion and no
-    instructions API - it is tuned only by portal-typed feedback. This document is therefore a
-    managed runbook / source-of-truth surfaced in the wizard handoff, and is manifest-ready for a
-    custom Security Copilot agent if one is ever built.
+    The resolved document is a managed runbook the operator applies manually in the portal
+    (the first-party agent has no instructions/knowledge API - it is tuned only by portal
+    feedback). It is saved locally to the Desktop; there is no cloud copy.
 #>
 
 function Get-PTDefaultSkillsPath {
@@ -41,41 +40,12 @@ function ConvertTo-PTLocalPath {
     return $Path
 }
 
-function Get-PTSharePointFileContent {
-    <#
-        Reads a text file from SharePoint by its sharing/web URL using the Graph /shares endpoint
-        (encodes the URL to an unpadded base64 share token). Requires a Graph connection with
-        Sites.Read(Write).All. Returns the file text.
-    #>
+function Get-PTSkillsContent {
+    <# Reads skills markdown from a local path (Windows or WSL form). Throws if unreadable. #>
     [CmdletBinding()]
     [OutputType([string])]
-    param([Parameter(Mandatory)][string]$ShareUrl)
+    param([Parameter(Mandatory)][string]$Path)
 
-    $bytes = [System.Text.Encoding]::UTF8.GetBytes($ShareUrl)
-    $b64 = [System.Convert]::ToBase64String($bytes).TrimEnd('=').Replace('/', '_').Replace('+', '-')
-    $token = "u!$b64"
-    $item = Invoke-PTGraphRequest -Method GET -Uri "/v1.0/shares/$token/driveItem"
-    $content = Invoke-PTGraphRequest -Method GET -Uri "/v1.0/shares/$token/driveItem/content"
-    if ($content -is [byte[]]) { return [System.Text.Encoding]::UTF8.GetString($content) }
-    if ($null -ne $item) { return [string]$content }
-    return [string]$content
-}
-
-function Get-PTSkillsContent {
-    <#
-        Reads skills markdown from either a local path (-Path, Windows or WSL form) or a
-        SharePoint URL (-SharePointUrl). Returns the file text, or throws if unreadable.
-    #>
-    [CmdletBinding(DefaultParameterSetName = 'Local')]
-    [OutputType([string])]
-    param(
-        [Parameter(Mandatory, ParameterSetName = 'Local')][string]$Path,
-        [Parameter(Mandatory, ParameterSetName = 'SharePoint')][string]$SharePointUrl
-    )
-
-    if ($PSCmdlet.ParameterSetName -eq 'SharePoint') {
-        return Get-PTSharePointFileContent -ShareUrl $SharePointUrl
-    }
     $resolved = ConvertTo-PTLocalPath -Path $Path
     if (-not (Test-Path -LiteralPath $resolved)) {
         throw "Skills file not found: '$Path' (resolved to '$resolved')."
@@ -138,36 +108,12 @@ function Save-PTSkillsDocument {
         $dir = Split-Path -Parent $resolved
         if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
         Set-Content -LiteralPath $resolved -Value $Content -Encoding utf8
-        Write-PTStatus -Level OK -Message "Skills document written to '$resolved'."
+        Write-PTStatus -Level OK -Message "Runbook written to '$resolved'."
     }
     else {
-        Write-PTStatus -Level DRYRUN -Message "Would write skills document to '$resolved'."
+        Write-PTStatus -Level DRYRUN -Message "Would write runbook to '$resolved'."
     }
     return $resolved
-}
-
-function Publish-PTSkillsDocument {
-    <#
-        Publishes the resolved skills content to a SharePoint drive path via Graph
-        (PUT .../drive/root:/{ItemPath}:/content). Requires the drive ID and the target item
-        path (e.g. 'AgentDocs/phishing-triage-skills.md'). Honours -WhatIf.
-    #>
-    [CmdletBinding(SupportsShouldProcess)]
-    [OutputType([pscustomobject])]
-    param(
-        [Parameter(Mandatory)][string]$Content,
-        [Parameter(Mandatory)][string]$DriveId,
-        [Parameter(Mandatory)][string]$ItemPath
-    )
-    $safePath = $ItemPath.TrimStart('/')
-    $uri = "/v1.0/drives/$DriveId/root:/${safePath}:/content"
-    if ($PSCmdlet.ShouldProcess("$DriveId :/$ItemPath", 'Publish skills document to SharePoint')) {
-        $item = Invoke-PTGraphRequest -Method PUT -Uri $uri -Body $Content -ContentType 'text/markdown'
-        Write-PTStatus -Level OK -Message "Skills document published to SharePoint '$ItemPath'."
-        return [pscustomobject]@{ Published = $true; WebUrl = (Get-PTProperty $item 'webUrl') }
-    }
-    Write-PTStatus -Level DRYRUN -Message "Would publish skills document to SharePoint '$ItemPath'."
-    return [pscustomobject]@{ Published = $false; WebUrl = $null }
 }
 
 function Get-PTDesktopPath {
@@ -184,37 +130,5 @@ function Get-PTDesktopPath {
     return $desktop
 }
 
-function Publish-PTOneDriveCopy {
-    <#
-        Uploads the resolved runbook content to the signed-in user's OneDrive
-        (PUT /me/drive/root:/{ItemPath}:/content) and returns the web link. Requires a Graph
-        connection with Files.ReadWrite. Reports Uploaded=$false (rather than throwing) when the
-        account has no OneDrive provisioned. Honours -WhatIf.
-    #>
-    [CmdletBinding(SupportsShouldProcess)]
-    [OutputType([pscustomobject])]
-    param(
-        [Parameter(Mandatory)][string]$Content,
-        [Parameter(Mandatory)][string]$ItemPath
-    )
-    $safePath = $ItemPath.TrimStart('/')
-    $uri = "/v1.0/me/drive/root:/${safePath}:/content"
-    if (-not $PSCmdlet.ShouldProcess('OneDrive', "Upload runbook to $safePath")) {
-        Write-PTStatus -Level DRYRUN -Message "Would upload runbook copy to OneDrive '$safePath'."
-        return [pscustomobject]@{ Uploaded = $false; WebUrl = $null }
-    }
-    try {
-        $item = Invoke-PTGraphRequest -Method PUT -Uri $uri -Body $Content -ContentType 'text/markdown'
-        $webUrl = [string](Get-PTProperty $item 'webUrl')
-        Write-PTStatus -Level OK -Message 'Runbook copy uploaded to OneDrive.'
-        return [pscustomobject]@{ Uploaded = $true; WebUrl = $webUrl }
-    }
-    catch {
-        Write-PTStatus -Level WARN -Message "OneDrive upload skipped (no OneDrive for this account?): $($_.Exception.Message)"
-        return [pscustomobject]@{ Uploaded = $false; WebUrl = $null }
-    }
-}
-
 Export-ModuleMember -Function Get-PTDefaultSkillsPath, ConvertTo-PTLocalPath, Get-PTSkillsContent,
-    Resolve-PTSkillsDocument, Save-PTSkillsDocument, Publish-PTSkillsDocument,
-    Get-PTDesktopPath, Publish-PTOneDriveCopy
+    Resolve-PTSkillsDocument, Save-PTSkillsDocument, Get-PTDesktopPath
